@@ -36,4 +36,18 @@ class FootballController extends Controller
 
         return response()->json($data['response'] ?? []);
     }
+
+    public function fixturesApi()
+    {
+        // Get today’s date in Indian timezone
+        $today = now('Asia/Kolkata')->format('Y-m-d'); // e.g. 2025-10-16
+
+        // Fetch fixtures for today's date only
+        $response = Http::withHeaders($this->headers)
+            ->get($this->baseUrl . 'fixtures', [
+                'date' => $today,
+            ]);
+
+        return $response->json()['response'] ?? [];
+    }
 }

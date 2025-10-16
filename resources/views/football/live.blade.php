@@ -2,211 +2,187 @@
 <html>
 
 <head>
-    <title>NR Sports - Live Football Scores</title>
+    <title>NR Sports - Live Football Scores & Fixtures</title>
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <style>
-        body {
-            background: #f1f3f6;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .navbar {
-            background-color: #1a1a2e;
-        }
-
-        .navbar-brand {
-            font-weight: bold;
-            font-size: 1.5rem;
-        }
-
-        .match-card {
-            background: #fff;
-            border-radius: 15px;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            margin-bottom: 25px;
-            transition: transform 0.2s;
-        }
-
-        .match-card:hover {
-            transform: scale(1.02);
-        }
-
-        .league {
-            font-size: 1rem;
-            font-weight: bold;
-            margin-bottom: 15px;
-        }
-
-        .league img {
-            height: 40px;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
-
-        .team-logo {
-            width: 70px;
-            height: 70px;
-            object-fit: contain;
-            margin-bottom: 5px;
-        }
-
-        .team-name {
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-
-        .score {
-            font-size: 2.2rem;
-            font-weight: bold;
-            margin: 0 20px;
-        }
-
-        .status {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .timer {
-            font-size: 1rem;
-            color: #dc3545;
-            font-weight: bold;
-            margin-top: 5px;
-        }
-
-        .goals {
-            margin-top: 10px;
-        }
-
-        .goal-item {
-            font-size: 0.85rem;
-            margin: 2px 0;
-        }
-
-        .home-goals {
-            text-align: left;
-        }
-
-        .away-goals {
-            text-align: right;
-        }
-
-        .score-breakdown {
-            font-size: 0.85rem;
-            color: #555;
-            margin-top: 5px;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <!-- Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="#">NR Sports</a>
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <img src="{{ asset('images/logo.jpg') }}" alt="NR Sports" class="logo me-2" style="width:40px;">
+                NR Sports
+            </a>
         </div>
     </nav>
 
+    <!-- Tabs -->
     <div class="container py-4">
-        <h2 class="mb-4 text-center">⚽ Live Football Scores</h2>
-        <div id="matches" class="row justify-content-center"></div>
+        <ul class="nav nav-tabs mb-4" id="footballTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="live-tab" data-bs-toggle="tab" data-bs-target="#live"
+                    type="button">
+                    Live Matches
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="fixtures-tab" data-bs-toggle="tab" data-bs-target="#fixtures"
+                    type="button">
+                    Upcoming Fixtures
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="footballTabsContent">
+            <!-- Live Matches -->
+            <div class="tab-pane fade show active" id="live">
+                <div id="matches" class="row justify-content-center"></div>
+            </div>
+
+            <!-- Fixtures -->
+            <div class="tab-pane fade" id="fixtures">
+                <div id="fixtures-list" class="row justify-content-center"></div>
+            </div>
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let matchesData = [];
+        let fixturesData = [];
 
+        // Fetch live matches
         function fetchLiveMatches() {
-            $.ajax({
-                url: '{{ url("/football/live-api") }}',
-                method: 'GET',
-                success: function (data) {
-                    matchesData = data;
-                    renderMatches();
-                },
-                error: function () {
-                    $('#matches').html('<div class="alert alert-danger">Error fetching live matches.</div>');
-                }
+            $.get('{{ url('/football/live-api') }}', function(data) {
+                matchesData = data.response || data; // Adjust for your API structure
+                renderMatches();
             });
         }
 
         function renderMatches() {
             let html = '';
-            if (matchesData.length === 0) {
-                html = '<div class="alert alert-info">No live matches right now.</div>';
+            if (!matchesData.length) {
+                html = '<div class="alert alert-info text-center">No live matches right now.</div>';
             } else {
                 matchesData.forEach((match, index) => {
                     let elapsed = match.fixture.status.elapsed ?? 0;
                     let status = match.fixture.status.short;
 
-                    // Home and Away Goals
-                    let homeGoals = '', awayGoals = '';
-                    if (match.events && match.events.length > 0) {
+                    // Goals with scorer names
+                    let homeGoalsHtml = '';
+                    let awayGoalsHtml = '';
+
+                    if (match.events && match.events.length) {
                         match.events.forEach(ev => {
-                            let timeText = ev.time.elapsed;
-                            if (ev.time.extra) {
-                                timeText += `+${ev.time.extra}`;
-                            }
                             if (ev.type === "Goal") {
+                                let timeText = ev.time.elapsed;
+                                if (ev.time.extra) timeText += `+${ev.time.extra}`;
                                 if (ev.team.id === match.teams.home.id) {
-                                    homeGoals += `<div class="goal-item">${timeText}' ${ev.player.name}</div>`;
-                                } else {
-                                    awayGoals += `<div class="goal-item">${ev.player.name} ${timeText}'</div>`;
-                                }
-                            } else {
-                                // Other events: card, substitution
-                                let icon = '';
-                                if (ev.type === 'Card') icon = '⚠️';
-                                if (ev.type === 'Substitution') icon = '🔄';
-                                if (ev.team.id === match.teams.home.id) {
-                                    homeGoals += `<div class="goal-item">${icon} ${ev.player.name} ${timeText}'</div>`;
-                                } else {
-                                    awayGoals += `<div class="goal-item">${icon} ${ev.player.name} ${timeText}'</div>`;
+                                    homeGoalsHtml +=
+                                        `<div class="goal-item">${timeText}' ${ev.player.name}</div>`;
+                                } else if (ev.team.id === match.teams.away.id) {
+                                    awayGoalsHtml +=
+                                        `<div class="goal-item">${ev.player.name} ${timeText}'</div>`;
                                 }
                             }
                         });
                     }
 
-                    // Score breakdown
-                    let scoreBreakdown = `
-                        <div class="score-breakdown">
-                            HT: ${match.score.halftime.home ?? 0}-${match.score.halftime.away ?? 0} |
-                            FT: ${match.score.fulltime.home ?? '-'}-${match.score.fulltime.away ?? '-'} |
-                            ET: ${match.score.extratime.home ?? '-'}-${match.score.extratime.away ?? '-'}
-                        </div>
-                    `;
-
                     html += `
-                        <div class="col-md-6 col-lg-5">
-                            <div class="match-card text-center">
-                                <div class="league">
-                                    <img src="${match.league.logo}" alt="${match.league.name}"> ${match.league.name}
-                                </div>
-                                <div class="d-flex align-items-center justify-content-between my-3">
-                                    <div class="text-center flex-fill">
-                                        <img src="${match.teams.home.logo}" class="team-logo"><br>
-                                        <div class="team-name">${match.teams.home.name}</div>
-                                        <div class="goals home-goals">${homeGoals}</div>
-                                    </div>
-                                    <div class="score">${match.goals.home ?? 0} - ${match.goals.away ?? 0}</div>
-                                    <div class="text-center flex-fill">
-                                        <img src="${match.teams.away.logo}" class="team-logo"><br>
-                                        <div class="team-name">${match.teams.away.name}</div>
-                                        <div class="goals away-goals">${awayGoals}</div>
-                                    </div>
-                                </div>
-                                <div class="status">Status: ${status}</div>
-                                <div class="timer" id="timer-${index}">${elapsed} min</div>
-                                ${scoreBreakdown}
+                <div class="col-md-6 col-lg-5 mb-4">
+                    <div class="match-card text-center p-3 shadow-sm rounded">
+                        <div class="league mb-2 d-flex align-items-center justify-content-center">
+                            <img src="${match.league.logo}" alt="${match.league.name}" class="me-2" width="25">
+                            <span class="fw-semibold">${match.league.name}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center my-3">
+                            <div class="text-center flex-fill">
+                                <img src="${match.teams.home.logo}" class="team-logo mb-2" width="45"><br>
+                                <div class="team-name">${match.teams.home.name}</div>
+                                <div class="goal-scorers">${homeGoalsHtml}</div>
+                            </div>
+                            <div class="score fs-4 fw-bold">${match.goals.home ?? 0} - ${match.goals.away ?? 0}</div>
+                            <div class="text-center flex-fill">
+                                <img src="${match.teams.away.logo}" class="team-logo mb-2" width="45"><br>
+                                <div class="team-name">${match.teams.away.name}</div>
+                                <div class="goal-scorers">${awayGoalsHtml}</div>
                             </div>
                         </div>
-                    `;
+                        <div class="status">Status: ${status}</div>
+                        <div class="timer" id="timer-${index}">${elapsed} min</div>
+                    </div>
+                </div>`;
                 });
             }
             $('#matches').html(html);
         }
+        // Fetch fixtures
+        function fetchFixtures() {
+            $.get('{{ url('/football/fixtures-api') }}', function(data) {
+                fixturesData = data.response || data; // Adjust to your API
+                renderFixtures();
+            });
+        }
 
-        function updateLiveTimers() {
+        function renderFixtures() {
+            let html = '';
+            if (!fixturesData.length) {
+                html = '<div class="alert alert-info text-center">No upcoming fixtures available.</div>';
+            } else {
+                fixturesData.forEach(fix => {
+                    let date = new Date(fix.fixture.date);
+                    let localTime = date.toLocaleString('en-IN', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short'
+                    });
+
+                    // Goals (show only if match finished or in progress)
+                    let homeGoals = fix.goals.home !== null ? fix.goals.home : '-';
+                    let awayGoals = fix.goals.away !== null ? fix.goals.away : '-';
+
+                    // Status label
+                    let statusLabel = fix.fixture.status.short;
+                    if (statusLabel === 'FT') {
+                        statusLabel = 'Finished';
+                    } else if (statusLabel === 'NS') {
+                        statusLabel = 'Not Started';
+                    }
+
+                    html += `
+                <div class="col-md-6 col-lg-5 mb-4">
+                    <div class="fixture-card text-center p-3 shadow-sm rounded">
+                        <div class="league mb-2 d-flex align-items-center justify-content-center">
+                            <img src="${fix.league.logo}" alt="${fix.league.name}" class="me-2" width="25">
+                            <span class="fw-semibold">${fix.league.name}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center my-3">
+                            <div class="text-center flex-fill">
+                                <img src="${fix.teams.home.logo}" class="team-logo mb-2" width="45"><br>
+                                <div class="team-name">${fix.teams.home.name}</div>
+                                <div class="team-goals fw-bold">${homeGoals}</div>
+                            </div>
+                            <div class="vs fw-bold">VS</div>
+                            <div class="text-center flex-fill">
+                                <img src="${fix.teams.away.logo}" class="team-logo mb-2" width="45"><br>
+                                <div class="team-name">${fix.teams.away.name}</div>
+                                <div class="team-goals fw-bold">${awayGoals}</div>
+                            </div>
+                        </div>
+                        <div class="match-date text-muted">${localTime}</div>
+                        <div class="match-status mt-1 fw-semibold">${statusLabel}</div>
+                    </div>
+                </div>`;
+                });
+            }
+            $('#fixtures-list').html(html);
+        }
+
+        // Timer update
+        function updateTimers() {
             matchesData.forEach((match, index) => {
                 if (['1H', '2H', 'ET'].includes(match.fixture.status.short)) {
                     match.fixture.status.elapsed = (match.fixture.status.elapsed ?? 0) + 1;
@@ -215,14 +191,11 @@
             });
         }
 
-        // Initial fetch
+        // Initial load
         fetchLiveMatches();
-
-        // Refresh API data every 60 seconds
+        fetchFixtures();
         setInterval(fetchLiveMatches, 60000);
-
-        // Update elapsed minutes every 60 seconds
-        setInterval(updateLiveTimers, 60000);
+        setInterval(updateTimers, 60000);
     </script>
 </body>
 
