@@ -10,3 +10,4 @@ Route::get('/', function () {
 
 Route::get('/', [FootballController::class, 'liveMatchesPage']); // page
 Route::get('/football/live-api', [FootballController::class, 'getLiveMatches']); // ajax
+Route::get('/football/fixtures-api', [FootballController::class, 'fixturesApi']);
