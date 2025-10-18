@@ -10,10 +10,10 @@
 
 <body>
     <!-- Header -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="#">
-                <img src="{{ asset('images/logo.jpg') }}" alt="NR Sports" class="logo me-2" style="width:40px;">
+                <img src="{{ asset('images/logo.png') }}" alt="NR Sports" class="logo me-2" style="width:80px;">
                 NR Sports
             </a>
         </div>
